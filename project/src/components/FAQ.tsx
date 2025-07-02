@@ -43,6 +43,7 @@ export function FAQ({ onBack }: FAQProps) {
         { question: t.faqQuestion7, answer: t.faqAnswer7 },
         { question: t.faqQuestion8, answer: t.faqAnswer8 },
         { question: t.faqQuestion9, answer: t.faqAnswer9 },
+        { question: t.faqQuestion14, answer: t.faqAnswer14 },
       ],
     },
     {
@@ -51,6 +52,7 @@ export function FAQ({ onBack }: FAQProps) {
         { question: t.faqQuestion10, answer: t.faqAnswer10 },
         { question: t.faqQuestion11, answer: t.faqAnswer11 },
         { question: t.faqQuestion12, answer: t.faqAnswer12 },
+        { question: t.faqQuestion13, answer: t.faqAnswer13 },
       ],
     },
   ];

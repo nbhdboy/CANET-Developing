@@ -34,6 +34,13 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
   const [isTapPayReady, setIsTapPayReady] = useState(false);
   const setupCompleted = useRef(false);
 
+  // 新增：優先用 props.package.email
+  const email = pkg.email || user?.email || '';
+  const carrier = pkg.carrier || user?.carrier || '';
+
+  // 在 function 頂層宣告 validSavedCards
+  const validSavedCards = (user?.savedCards || []).filter(card => card.last_four);
+
   useEffect(() => {
     // 進入結帳頁時，log 所有 script 標籤
     const scripts = document.querySelectorAll('script');
@@ -42,8 +49,10 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
     });
     console.log('【DEBUG】PaymentPage user:', user);
     console.log('【DEBUG】PaymentPage user?.savedCards:', user?.savedCards);
-    if (user?.savedCards?.length > 0) {
-      setSelectedCard(user.savedCards[0]);
+    // 取得有效的已儲存卡片
+    const validSavedCards = (user?.savedCards || []).filter(card => card.last_four);
+    if (validSavedCards.length > 0) {
+      setSelectedCard(validSavedCards[0]);
       setSelectedMethod('saved_card');
     } else {
       setSelectedMethod('card');
@@ -194,7 +203,7 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
           cardholder: {
             phone_number: user.phone || '',
             name: user.name || '',
-            email: user.email || ''
+            email: email
           },
           order_number: `ESIM_${Date.now()}`,
           package_id: pkg.id || pkg.package_id,
@@ -204,7 +213,7 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
           isTopUp: pkg.isTopUp || false,
           iccid: pkg.iccid || null,
           country: pkg.country,
-          carrier: pkg.carrier
+          carrier: carrier
         };
         console.log('【DEBUG】送出付款 payload:', payload);
         // 發送支付請求到後端
@@ -262,7 +271,7 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
             cardholder: {
               phone_number: user.phone || '',
               name: user.name || '',
-              email: user.email || ''
+              email: email
             },
             remember: false,
             order_number: `ESIM_${Date.now()}`,
@@ -280,7 +289,7 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
             isTopUp: pkg.isTopUp || false,
             iccid: pkg.iccid || null,
             country: pkg.country,
-            carrier: pkg.carrier
+            carrier: carrier
           };
           console.log('【DEBUG】送出付款 payload:', payload);
           const response = await fetch(`${import.meta.env.VITE_API_URL}/process-payment`, {
@@ -343,7 +352,7 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
             </div>
 
             <div className="space-y-4">
-              {user?.savedCards?.length > 0 && (
+              {validSavedCards.length > 0 && (
                 <div 
                   className={`p-4 border rounded-lg cursor-pointer transition-all ${
                     selectedMethod === 'saved_card' 
@@ -362,7 +371,7 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
 
                   {selectedMethod === 'saved_card' && (
                     <div className="mt-4 space-y-2">
-                      {user.savedCards.map(card => (
+                      {validSavedCards.map(card => (
                         <div
                           key={card.id}
                           className={`p-3 rounded-lg cursor-pointer transition-all ${
@@ -375,7 +384,7 @@ export const PaymentPage: FC<PaymentPageProps> = ({ package: pkg, onClose, onPur
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-line">{card.brand}</span>
-                              <span>•••• {card.last4}</span>
+                              <span>•••• {card.last_four}</span>
                             </div>
                             <span className="text-sm text-gray-500">
                               {card.expiryMonth}/{card.expiryYear}

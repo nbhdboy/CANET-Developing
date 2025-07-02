@@ -249,6 +249,7 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
       return;
     }
     // 沒有快取才發 API
+    console.log('[InstallInstructions] API 請求語言參數:', language);
     fetch(`https://lcfsxxncgqrhjtbfmtig.functions.supabase.co/airalo-install-instructions?iccid=${iccid}&language=${language}`)
       .then(res => {
         if (!res.ok) throw new Error('API 請求失敗');
@@ -586,7 +587,7 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
                     return (
                       <div className="w-full flex justify-center">
                         <a href={inst.direct_apple_installation_url} target="_blank" rel="noopener noreferrer"
-                          className="inline-block px-8 py-3 bg-green-500 hover:bg-green-600 text-white text-base rounded transition-colors font-medium flex items-center justify-center gap-2">
+                          className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white text-base rounded transition-colors font-medium flex items-center justify-center gap-2">
                           {tInstall.appleDirect}
                         </a>
                       </div>

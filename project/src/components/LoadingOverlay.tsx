@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../store';
 import { translations } from '../i18n';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export function LoadingOverlay() {
   const { language } = useStore();
@@ -9,10 +10,13 @@ export function LoadingOverlay() {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
       <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 max-w-sm mx-4 w-full">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-line/30 border-t-line rounded-full animate-spin" />
-          <div className="absolute inset-0 w-16 h-16 border-4 border-line/10 rounded-full animate-pulse" />
-        </div>
+        <DotLottieReact
+          src="https://lottie.host/392c4e43-1540-4c7e-8d2f-a01e3eec27ba/2TDIsdLa6w.lottie"
+          loop
+          autoplay
+          speed={3.5}
+          style={{ width: 96, height: 96 }}
+        />
         <div className="text-center">
           <p className="text-xl font-semibold bg-line-gradient bg-clip-text text-transparent animate-pulse">
             {t.processing}
@@ -31,10 +35,13 @@ export function DeletingOverlay() {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
       <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 max-w-sm mx-4 w-full">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-line/30 border-t-line rounded-full animate-spin" />
-          <div className="absolute inset-0 w-16 h-16 border-4 border-line/10 rounded-full animate-pulse" />
-        </div>
+        <DotLottieReact
+          src="https://lottie.host/392c4e43-1540-4c7e-8d2f-a01e3eec27ba/2TDIsdLa6w.lottie"
+          loop
+          autoplay
+          speed={3.5}
+          style={{ width: 96, height: 96 }}
+        />
         <div className="text-center">
           <p className="text-xl font-semibold bg-line-gradient bg-clip-text text-transparent animate-pulse">
             {t.deleting}
