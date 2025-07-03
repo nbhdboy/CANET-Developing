@@ -22,7 +22,8 @@ serve(async (req) => {
       if (countryCodeQuery) {
         dbUrl += `&country_code=${countryCodeQuery}`;
       }
-      const dbRes = await fetch(dbUrl, {
+      // 第一次查詢 DB
+      let dbRes = await fetch(dbUrl, {
         method: "GET",
         headers: {
           "apikey": SERVICE_ROLE_KEY,
@@ -30,7 +31,32 @@ serve(async (req) => {
           "Content-Type": "application/json"
         }
       });
-      const dbData = await dbRes.json();
+      let dbData = await dbRes.json();
+      console.log(`[airalo-get-packages] 第一次查詢 DB，資料筆數: ${Array.isArray(dbData) ? dbData.length : '非陣列'}`);
+      // 如果查到空陣列，觸發 airalo-sync-packages function
+      if (Array.isArray(dbData) && dbData.length === 0) {
+        console.log('[airalo-get-packages] 查無資料，觸發 airalo-sync-packages function 進行自動補資料');
+        // 呼叫同步 function
+        const syncRes = await fetch(`${SUPABASE_URL.replace(/\/rest\/v1$/, '')}/functions/v1/airalo-sync-packages`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+            "apikey": SERVICE_ROLE_KEY
+          }
+        });
+        console.log(`[airalo-get-packages] airalo-sync-packages function 呼叫結果 status: ${syncRes.status}`);
+        // 同步完再查一次 DB
+        dbRes = await fetch(dbUrl, {
+          method: "GET",
+          headers: {
+            "apikey": SERVICE_ROLE_KEY,
+            "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json"
+          }
+        });
+        dbData = await dbRes.json();
+        console.log(`[airalo-get-packages] 同步後再次查詢 DB，資料筆數: ${Array.isArray(dbData) ? dbData.length : '非陣列'}`);
+      }
       return new Response(JSON.stringify(dbData), {
         status: 200,
         headers: {
