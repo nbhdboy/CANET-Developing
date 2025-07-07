@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@line/liff": "^2.23.1",
+    "@line/liff": "^2.27.0",
     "@lottiefiles/dotlottie-react": "^0.14.2",
     "@supabase/supabase-js": "^2.39.3",
     "lucide-react": "^0.344.0",

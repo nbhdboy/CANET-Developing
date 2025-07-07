@@ -749,7 +749,7 @@ function App() {
     if (esimLoading) {
       return (
         <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-10 flex flex-col items-center gap-8 max-w-sm mx-4 w-full">
+          <div className="flex flex-col items-center">
             <DotLottieReact
               src="https://lottie.host/392c4e43-1540-4c7e-8d2f-a01e3eec27ba/2TDIsdLa6w.lottie"
               loop
@@ -757,7 +757,7 @@ function App() {
               speed={3.5}
               style={{ width: 120, height: 120 }}
             />
-            <div className="text-center">
+            <div className="text-center mt-8">
               <p className="text-xl font-semibold bg-line-gradient bg-clip-text text-transparent animate-pulse">
                 {t.loadingScreen}
               </p>
@@ -921,7 +921,7 @@ function App() {
         if (profileLoading) {
           return (
             <div className="fixed inset-0 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-10 flex flex-col items-center gap-8 max-w-sm mx-4 w-full">
+              <div className="flex flex-col items-center">
                 <DotLottieReact
                   src="https://lottie.host/392c4e43-1540-4c7e-8d2f-a01e3eec27ba/2TDIsdLa6w.lottie"
                   loop
@@ -929,7 +929,7 @@ function App() {
                   speed={3.5}
                   style={{ width: 120, height: 120 }}
                 />
-                <div className="text-center">
+                <div className="text-center mt-8">
                   <p className="text-xl font-semibold bg-line-gradient bg-clip-text text-transparent animate-pulse">
                     {t.loadingScreen}
                   </p>
@@ -975,11 +975,10 @@ function App() {
         // 搜尋再進一步過濾
         filteredPackages = filteredPackages.filter(pkg => {
           if (!searchText) return true;
-          if (language === 'zh_TW') {
-            return pkg.country && pkg.country.startsWith(searchText);
-          } else {
-            return pkg.country && pkg.country.toLowerCase().startsWith(searchText.toLowerCase());
-          }
+          const countryName = language === 'zh_TW'
+            ? countryNames[pkg.countryCode]?.zh_TW || pkg.country
+            : countryNames[pkg.countryCode]?.en || pkg.country;
+          return countryName && countryName.toLowerCase().startsWith(searchText.toLowerCase());
         });
         return (
           <>
