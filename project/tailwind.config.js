@@ -26,7 +26,7 @@ export default {
         'button-gradient-hover': 'linear-gradient(135deg, #00C300 0%, #00B300 100%)',
       },
       boxShadow: {
-        'card': '0 4px 20px rgba(0, 195, 0, 0.1)',
+        'card': '0 4px 20px rgba(180,180,180,0.18)',
         'button': '0 4px 15px rgba(0, 195, 0, 0.2)',
       },
       animation: {

@@ -835,37 +835,41 @@ function App() {
         {/* 目前的eSIM列表 */}
         {console.log('目前 eSIM iccid：', sortedCurrentEsims.map(e => e.iccid))}
         <div className={esimTab === 'current' ? '' : 'hidden'}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedCurrentEsims.map((esim, idx) => (
-              <PackageCard
-                key={esim.iccid || esim.id || `empty-${idx}`}
-                package={esim}
-                onSelect={handleViewDetails}
-                isPurchased
-                onShowInstallInstructions={handleShowInstallInstructions}
-              />
-            ))}
+          <div className="p-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sortedCurrentEsims.map((esim, idx) => (
+                <PackageCard
+                  key={esim.iccid || esim.id || `empty-${idx}`}
+                  package={esim}
+                  onSelect={handleViewDetails}
+                  isPurchased
+                  onShowInstallInstructions={handleShowInstallInstructions}
+                />
+              ))}
+            </div>
+            {sortedCurrentEsims.length === 0 && (
+              <div className="text-center text-gray-400 py-8">{t.noData}</div>
+            )}
           </div>
-          {sortedCurrentEsims.length === 0 && (
-            <div className="text-center text-gray-400 py-8">{t.noData}</div>
-          )}
         </div>
         {/* 已封存的eSIM列表 */}
         <div className={esimTab === 'archived' ? '' : 'hidden'}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedArchivedEsims.map((esim, idx) => (
-              <PackageCard
-                key={esim.iccid || esim.id || `empty-${idx}`}
-                package={esim}
-                onSelect={handleViewDetails}
-                isPurchased
-                onShowInstallInstructions={handleShowInstallInstructions}
-              />
-            ))}
+          <div className="p-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sortedArchivedEsims.map((esim, idx) => (
+                <PackageCard
+                  key={esim.iccid || esim.id || `empty-${idx}`}
+                  package={esim}
+                  onSelect={handleViewDetails}
+                  isPurchased
+                  onShowInstallInstructions={handleShowInstallInstructions}
+                />
+              ))}
+            </div>
+            {sortedArchivedEsims.length === 0 && (
+              <div className="text-center text-gray-400 py-8">{t.noData}</div>
+            )}
           </div>
-          {sortedArchivedEsims.length === 0 && (
-            <div className="text-center text-gray-400 py-8">{t.noData}</div>
-          )}
         </div>
       </div>
     );
