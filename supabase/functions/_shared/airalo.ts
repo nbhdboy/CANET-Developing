@@ -149,7 +149,9 @@ export async function getAiraloInstallInstructions(iccid: string, language: stri
         'Accept-Language': language
       },
     });
+    console.log('[Airalo][getAiraloInstallInstructions] 實際傳遞 Accept-Language:', language);
     const data = await res.json();
+    console.log('[Airalo][DEBUG] API 回傳原始資料:', JSON.stringify(data, null, 2));
     let instructions = data?.data?.instructions;
     let sims = data?.data?.sims;
     // 檢查 instructions 是否有 network_setup
@@ -260,32 +262,20 @@ export async function getAiraloInstallInstructions(iccid: string, language: stri
         } else {
           console.log('[UPSET] 沒有 upsertRows，未執行 upsert');
         }
+        // 修正：用 upsertRows group by install_type 回傳（必須放在 try 區塊內，確保 upsertRows 作用域正確）
+        const iosRows = upsertRows.filter(row => row.os_type === 'ios');
+        const androidRows = upsertRows.filter(row => row.os_type === 'android');
+        const filtered = {
+          ios: pickLatestByInstallType(iosRows),
+          android: pickLatestByInstallType(androidRows)
+        };
+        // 新增 log：filtered 內容
+        console.log('[RETURN][DEBUG] filtered.ios.length:', filtered.ios.length, 'install_types:', filtered.ios.map(i => i.install_type));
+        console.log('[RETURN][DEBUG] filtered.android.length:', filtered.android.length, 'install_types:', filtered.android.map(i => i.install_type));
+        return { instructions: filtered };
       } catch (e) {
         console.log('upsert esim_install_instructions 失敗:', e?.message || e);
       }
-      // 只回傳最新版本那一筆
-      function pickLatest(arr) {
-        if (!arr || arr.length === 0) return null;
-        const withVersion = arr.filter(item => item.version);
-        if (withVersion.length === 0) return arr[1] || arr[0] || null;
-        let latest = null;
-        let latestVersion = -Infinity;
-        for (const item of withVersion) {
-          const versions = item.version.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-          const max = Math.max(...versions);
-          if (max > latestVersion) {
-            latestVersion = max;
-            latest = item;
-          }
-        }
-        return latest;
-      }
-      const iosLatest = pickLatest(instructions.ios);
-      const androidLatest = pickLatest(instructions.android);
-      const filtered = { ios: [], android: [] };
-      if (iosLatest) filtered.ios.push(iosLatest);
-      if (androidLatest) filtered.android.push(androidLatest);
-      return { instructions: filtered };
     }
   } catch (e) {
     // Airalo API 錯誤時繼續 fallback
@@ -407,6 +397,36 @@ export async function getAiraloInstallInstructions(iccid: string, language: stri
   }
   // 全部查不到
   throw new Error('查無 eSIM 安裝說明資料');
+}
+
+// group by install_type，回傳每個 install_type 最新版本
+function pickLatestByInstallType(arr) {
+  if (!arr || arr.length === 0) return [];
+  const group = {};
+  for (const item of arr) {
+    if (!group[item.install_type]) group[item.install_type] = [];
+    group[item.install_type].push(item);
+  }
+  const result = [];
+  for (const type in group) {
+    const withVersion = group[type].filter(item => item.version);
+    let latest = null;
+    let latestVersion = -Infinity;
+    if (withVersion.length === 0) {
+      latest = group[type][1] || group[type][0] || null;
+    } else {
+      for (const item of withVersion) {
+        const versions = item.version.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+        const max = Math.max(...versions);
+        if (max > latestVersion) {
+          latestVersion = max;
+          latest = item;
+        }
+      }
+    }
+    if (latest) result.push(latest);
+  }
+  return result;
 }
 
 // 根據 ICCID 取得 Airalo 用量資訊

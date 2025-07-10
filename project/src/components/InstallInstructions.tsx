@@ -246,11 +246,22 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
         flag_url: cached.flag_url,
       });
       setLoading(false);
+      // 新增 log：前端收到 instructions.ios
+      if (cached.instructions?.ios) {
+        console.log('[前端][DEBUG] instructions.ios.length:', cached.instructions.ios.length, 'install_types:', cached.instructions.ios.map(i => i.install_type));
+      }
       return;
     }
     // 沒有快取才發 API
-    console.log('[InstallInstructions] API 請求語言參數:', language);
-    fetch(`https://lcfsxxncgqrhjtbfmtig.functions.supabase.co/airalo-install-instructions?iccid=${iccid}&language=${language}`)
+    // 語言格式轉換
+    function toApiLanguage(lang: string) {
+      if (lang === 'zh_TW') return 'zh-TW';
+      if (lang === 'en') return 'en';
+      return lang.replace('_', '-');
+    }
+    const apiLanguage = toApiLanguage(language);
+    console.log('[InstallInstructions] API 請求語言參數:', apiLanguage);
+    fetch(`https://lcfsxxncgqrhjtbfmtig.functions.supabase.co/airalo-install-instructions?iccid=${iccid}&language=${apiLanguage}`)
       .then(res => {
         if (!res.ok) throw new Error('API 請求失敗');
         return res.json();
@@ -277,6 +288,10 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
           flag_url: data.flag_url,
         });
         setLoading(false);
+        // 新增 log：前端收到 instructions.ios
+        if (data.instructions?.ios) {
+          console.log('[前端][DEBUG] instructions.ios.length:', data.instructions.ios.length, 'install_types:', data.instructions.ios.map(i => i.install_type));
+        }
       })
       .catch(err => {
         setError(err.message);
@@ -321,6 +336,16 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
         : Array.isArray(instructions.android) ? instructions.android.filter(item => !item.version)[0] : null)
     : null;
 
+  // 取得各安裝方式的 instruction
+  const iosManual = instructions?.ios?.find(i => i.install_type === 'manual');
+  const iosQrcode = instructions?.ios?.find(i => i.install_type === 'qrcode');
+  const iosNetwork = instructions?.ios?.find(i => i.install_type === 'network_setup');
+  const iosApple = instructions?.ios?.find(i => i.direct_apple_installation_url);
+
+  const androidManual = instructions?.android?.find(i => i.install_type === 'manual');
+  const androidQrcode = instructions?.android?.find(i => i.install_type === 'qrcode');
+  const androidNetwork = instructions?.android?.find(i => i.install_type === 'network_setup');
+
   // 警告提示
   const warning = (
     <div className="bg-green-100 text-green-900 rounded-lg px-4 py-3 mb-4 flex items-center gap-2">
@@ -342,78 +367,124 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
 
   // 取得目前步驟的圖片路徑
   const currentImage = images[step] ? `/installation instruction/${images[step]}` : '';
-  // 取得目前步驟的教學文字（API steps 依序對應）
-  let stepsArr: string[] = [];
-  if (tab === 'ios' && instructions) {
-    let inst: any = null;
-    if (iosType === 'qrcode') inst = instructions.ios?.find(i => i.installation_via_qr_code);
-    else if (iosType === 'manual') inst = instructions.ios?.find(i => i.installation_manual);
-    else if (iosType === 'apple') inst = instructions.ios?.find(i => i.direct_apple_installation_url);
-    if (inst && inst.installation_via_qr_code && iosType === 'qrcode') {
-      // 合併 network_setup.steps 1~3
-      const installSteps = Object.values(inst.installation_via_qr_code.steps || {});
-      const networkSteps = inst.network_setup?.steps ? [
-        inst.network_setup.steps[1] || '',
-        inst.network_setup.steps[2] || '',
-        inst.network_setup.steps[3] || '',
-      ] : [];
-      stepsArr = [...installSteps, ...networkSteps];
-    } else if (inst && inst.installation_manual && iosType === 'manual') {
-      // 完全依照需求組合 stepsArr
-      const installSteps = Object.values(inst.installation_manual.steps || {}); // 6個文案
-      const networkSteps = inst.network_setup?.steps ? [
-        inst.network_setup.steps[1] || '',
-        inst.network_setup.steps[2] || '',
-        inst.network_setup.steps[3] || '',
-      ] : [];
-      stepsArr = [...installSteps, ...networkSteps]; // 共9個文案
-    } else if (inst && inst.direct_apple_installation_url && iosType === 'apple') {
-      stepsArr = [tInstall.installInstructions + '（Apple 直接安裝）'];
+  // 取得自訂文案陣列
+  const customText = translations[language]?.installInstructionsCustom;
+
+  // 依據 tab/type 取得自訂文案陣列
+  let customStepsArr: string[] = [];
+  let customImagesArr: string[] = [];
+  if (tab === 'ios') {
+    if (iosType === 'manual') {
+      customStepsArr = customText?.ios?.manual?.steps || [];
+      customImagesArr = customText?.ios?.manual?.images || [];
+    } else if (iosType === 'qrcode') {
+      customStepsArr = customText?.ios?.qrcode?.steps || [];
+      customImagesArr = customText?.ios?.qrcode?.images || [];
+    } else if (iosType === 'apple') {
+      customStepsArr = customText?.ios?.apple?.steps || [];
+      customImagesArr = customText?.ios?.apple?.images || [];
     }
-  } else if (tab === 'android' && instructions) {
-    if (androidType === 'qrcode') {
-      // 前5個文案：installation_via_qr_code.steps
-      const inst = instructions.android?.find(i => i.installation_via_qr_code);
-      const installSteps = inst?.installation_via_qr_code?.steps ? Object.values(inst.installation_via_qr_code.steps) : [];
-      // 後5個文案：network_setup.steps 1~5
-      const networkSteps = inst?.network_setup?.steps ? [
-        inst.network_setup.steps[1] || '',
-        inst.network_setup.steps[2] || '',
-        inst.network_setup.steps[3] || '',
-        inst.network_setup.steps[4] || '',
-        inst.network_setup.steps[5] || '',
-      ] : [];
-      stepsArr = [...installSteps, ...networkSteps];
-    } else if (androidType === 'manual') {
-      // 前6個文案：installation_manual.steps
-      const inst = instructions.android?.find(i => i.installation_manual);
-      const installSteps = inst?.installation_manual?.steps ? Object.values(inst.installation_manual.steps) : [];
-      // 後5個文案：network_setup.steps 1~5
-      const networkSteps = inst?.network_setup?.steps ? [
-        inst.network_setup.steps[1] || '',
-        inst.network_setup.steps[2] || '',
-        inst.network_setup.steps[3] || '',
-        inst.network_setup.steps[4] || '',
-        inst.network_setup.steps[5] || '',
-      ] : [];
-      stepsArr = [...installSteps, ...networkSteps];
+  } else if (tab === 'android') {
+    if (androidType === 'manual') {
+      customStepsArr = customText?.android?.manual?.steps || [];
+      customImagesArr = customText?.android?.manual?.images || [];
+    } else if (androidType === 'qrcode') {
+      customStepsArr = customText?.android?.qrcode?.steps || [];
+      customImagesArr = customText?.android?.qrcode?.images || [];
     }
   }
-  // 進度 bar 長度
-  const totalSteps = images.length;
+
+  // debug log
+  console.log('[InstallInstructions] language:', language, 'tab:', tab, 'iosType:', iosType, 'androidType:', androidType);
+  console.log('[InstallInstructions] customStepsArr:', customStepsArr);
+  console.log('[InstallInstructions] customImagesArr:', customImagesArr);
+  console.log('[InstallInstructions] images:', images);
+  console.log('[InstallInstructions] step:', step, 'currentImage:', currentImage);
+
+  // 取得目前步驟的教學文字（優先自訂文案，無才 fallback API）
+  let stepsArr: string[] = [];
+  if (customStepsArr.length > 0) {
+    stepsArr = customStepsArr;
+  } else {
+    // fallback 原本 API steps 組合
+    if (tab === 'ios' && instructions) {
+      let inst: any = null;
+      if (iosType === 'qrcode') inst = iosQrcode;
+      else if (iosType === 'manual') inst = iosManual;
+      else if (iosType === 'apple') inst = iosApple;
+      if (inst && inst.content && iosType === 'qrcode') {
+        // 合併 network_setup.steps 1~3
+        const installSteps = Object.values(inst.content.steps || {});
+        const networkSteps = iosNetwork?.content?.steps ? [
+          iosNetwork.content.steps[1] || '',
+          iosNetwork.content.steps[2] || '',
+          iosNetwork.content.steps[3] || '',
+        ] : [];
+        stepsArr = [...installSteps, ...networkSteps];
+      } else if (inst && inst.content && iosType === 'manual') {
+        // 完全依照需求組合 stepsArr
+        const installSteps = Object.values(inst.content.steps || {}); // 6個文案
+        const networkSteps = iosNetwork?.content?.steps ? [
+          iosNetwork.content.steps[1] || '',
+          iosNetwork.content.steps[2] || '',
+          iosNetwork.content.steps[3] || '',
+        ] : [];
+        stepsArr = [...installSteps, ...networkSteps]; // 共9個文案
+      } else if (inst && inst.direct_apple_installation_url && iosType === 'apple') {
+        stepsArr = [tInstall.installInstructions + '（Apple 直接安裝）'];
+      }
+    } else if (tab === 'android' && instructions) {
+      let inst: any = null;
+      if (androidType === 'qrcode') inst = androidQrcode;
+      else if (androidType === 'manual') inst = androidManual;
+      if (androidType === 'qrcode' && inst && inst.content) {
+        // 前5個文案：installation_via_qr_code.steps
+        const installSteps = inst.content.steps ? Object.values(inst.content.steps) : [];
+        // 後5個文案：network_setup.steps 1~5
+        const networkSteps = androidNetwork?.content?.steps ? [
+          androidNetwork.content.steps[1] || '',
+          androidNetwork.content.steps[2] || '',
+          androidNetwork.content.steps[3] || '',
+          androidNetwork.content.steps[4] || '',
+          androidNetwork.content.steps[5] || '',
+        ] : [];
+        stepsArr = [...installSteps, ...networkSteps];
+      } else if (androidType === 'manual' && inst && inst.content) {
+        // 前6個文案：installation_manual.steps
+        const installSteps = inst.content.steps ? Object.values(inst.content.steps) : [];
+        // 後5個文案：network_setup.steps 1~5
+        const networkSteps = androidNetwork?.content?.steps ? [
+          androidNetwork.content.steps[1] || '',
+          androidNetwork.content.steps[2] || '',
+          androidNetwork.content.steps[3] || '',
+          androidNetwork.content.steps[4] || '',
+          androidNetwork.content.steps[5] || '',
+        ] : [];
+        stepsArr = [...installSteps, ...networkSteps];
+      }
+    }
+  }
+  // 決定實際要用的圖片與文案
+  const finalImages = customImagesArr.length > 0 ? customImagesArr : images;
+  const finalSteps = customStepsArr.length > 0 ? customStepsArr : stepsArr;
+  const totalSteps = finalImages.length;
 
   // 取得目前步驟對應的教學文字 index
   let textIndex = step;
-  if (tab === 'ios' && iosType === 'qrcode') {
-    textIndex = IOS_QRCODE_TEXT_INDEX[step] ?? 0;
-  } else if (tab === 'ios' && iosType === 'manual') {
-    textIndex = IOS_MANUAL_TEXT_INDEX[step] ?? 0;
-  } else if (tab === 'ios' && iosType === 'apple') {
-    textIndex = IOS_APPLE_TEXT_INDEX[step] ?? 0;
-  } else if (tab === 'android' && androidType === 'qrcode') {
-    textIndex = ANDROID_QRCODE_TEXT_INDEX[step] ?? 0;
-  } else if (tab === 'android' && androidType === 'manual') {
-    textIndex = ANDROID_MANUAL_TEXT_INDEX[step] ?? 0;
+  // 新規則：有自訂文案時，直接 index 對應
+  // fallback 時才用舊的對應表
+  if (!(customStepsArr.length > 0)) {
+    if (tab === 'ios' && iosType === 'qrcode') {
+      textIndex = IOS_QRCODE_TEXT_INDEX[step] ?? 0;
+    } else if (tab === 'ios' && iosType === 'manual') {
+      textIndex = IOS_MANUAL_TEXT_INDEX[step] ?? 0;
+    } else if (tab === 'ios' && iosType === 'apple') {
+      textIndex = IOS_APPLE_TEXT_INDEX[step] ?? 0;
+    } else if (tab === 'android' && androidType === 'qrcode') {
+      textIndex = ANDROID_QRCODE_TEXT_INDEX[step] ?? 0;
+    } else if (tab === 'android' && androidType === 'manual') {
+      textIndex = ANDROID_MANUAL_TEXT_INDEX[step] ?? 0;
+    }
   }
 
   // 切換步驟
@@ -580,38 +651,29 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
           <div className="text-xs text-gray-800 text-left whitespace-pre-line w-full">
             {tab === 'ios' && iosType === 'apple' && instructions ? (
               (() => {
-                // 只在 step 0~4 顯示 App 直接安裝連結 button
+                const inst = instructions.ios?.find(i => i.direct_apple_installation_url);
+                // step 0~4：顯示按鈕+自訂文案，step 5~7：只顯示自訂文案
                 if (step <= 4) {
-                  const inst = instructions.ios?.find(i => i.direct_apple_installation_url);
-                  if (inst && inst.direct_apple_installation_url) {
-                    return (
-                      <div className="w-full flex justify-center">
-                        <a href={inst.direct_apple_installation_url} target="_blank" rel="noopener noreferrer"
-                          className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white text-base rounded transition-colors font-medium flex items-center justify-center gap-2">
-                          {tInstall.appleDirect}
-                        </a>
-                      </div>
-                    );
-                  }
-                  return '（無教學文字）';
+                  return (
+                    <>
+                      {inst && inst.direct_apple_installation_url && (
+                        <div className="w-full flex justify-center mb-2">
+                          <a href={inst.direct_apple_installation_url} target="_blank" rel="noopener noreferrer"
+                            className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white text-base rounded transition-colors font-medium flex items-center justify-center gap-2">
+                            {tInstall.appleDirect}
+                          </a>
+                        </div>
+                      )}
+                      <ul className="list-disc pl-5">
+                        <li>{finalSteps[textIndex] || tInstall.noInstruction}</li>
+                      </ul>
+                    </>
+                  );
                 }
-                // step 5~7 顯示 network_setup 文案
-                // 取得 network_setup steps
-                let networkSteps: string[] = [];
-                const inst = instructions.ios?.[0];
-                if (inst && inst.network_setup && inst.network_setup.steps) {
-                  networkSteps = [
-                    inst.network_setup.steps[1] || '',
-                    inst.network_setup.steps[2] || '',
-                    inst.network_setup.steps[3] || '',
-                  ];
-                }
-                if (step >= 5 && step <= 7 && networkSteps[step - 5]) {
+                if (step >= 5 && step <= 7) {
                   return (
                     <ul className="list-disc pl-5">
-                      {[networkSteps[step - 5]]
-                        .filter(line => line.trim())
-                        .map((line, idx) => <li key={idx}>{line.trim()}</li>)}
+                      <li>{finalSteps[textIndex] || tInstall.noInstruction}</li>
                     </ul>
                   );
                 }
@@ -624,20 +686,20 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
                 <ul className="list-disc pl-5">
                   {(() => {
                     if (tab === 'android' && androidType === 'qrcode') {
-                      return [stepsArr[textIndex] || tInstall.noInstruction]
+                      return [finalSteps[textIndex] || tInstall.noInstruction]
                         .filter(line => line.trim())
                         .map((line, idx) => <li key={idx}>{line.trim()}</li>);
                     } else if (tab === 'android' && androidType === 'manual') {
-                      return [stepsArr[textIndex] || tInstall.noInstruction]
+                      return [finalSteps[textIndex] || tInstall.noInstruction]
                         .filter(line => line.trim())
                         .map((line, idx) => <li key={idx}>{line.trim()}</li>);
                     } else if (tab === 'ios' && iosType === 'manual') {
                       // iOS 手動安裝：每一張圖只顯示一個文案
-                      return <li>{stepsArr[textIndex] || tInstall.noInstruction}</li>;
+                      return <li>{finalSteps[textIndex] || tInstall.noInstruction}</li>;
                     }
                     // 其餘維持原本邏輯
-                    return (stepsArr[textIndex] || tInstall.noInstruction)
-                      .split(/\n|。/)
+                    return (finalSteps[textIndex] || tInstall.noInstruction)
+                      .split(/\n/)
                       .filter(line => line.trim())
                       .map((line, idx) => <li key={idx}>{line.trim()}</li>);
                   })()}
@@ -646,10 +708,10 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
             )}
             {/* iOS 手動安裝第4步顯示 SM-DP+地址與啟用碼表格 */}
             {tab === 'ios' && iosType === 'manual' && step === 3 && instructions && (() => {
-              const inst = instructions.ios?.find(i => i.installation_manual);
+              const inst = instructions.ios?.find(i => i.install_type === 'manual');
               // 直接取 smdp_address 與 activation_code
-              const smdp = inst?.installation_manual?.smdp_address || '';
-              const code = inst?.installation_manual?.activation_code || '';
+              const smdp = inst?.content?.smdp_address || '';
+              const code = inst?.content?.activation_code || '';
               if (smdp || code) {
                 return (
                   <div className="flex items-start mt-2">
@@ -692,16 +754,16 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
             })()}
             {/* iOS QR code 安裝步驟4時，於文字區塊下方顯示 QR code */}
             {tab === 'ios' && iosType === 'qrcode' && step === 3 && instructions && (() => {
-              const inst = instructions.ios?.find(i => i.installation_via_qr_code);
-              const qrUrl = inst?.installation_via_qr_code?.qr_code_url;
-              const qrData = inst?.installation_via_qr_code?.qr_code_data;
+              const inst = instructions.ios?.find(i => i.install_type === 'qrcode');
+              const qrUrl = inst?.content?.qr_code_url;
+              const qrData = inst?.content?.qr_code_data;
               if (qrUrl || qrData) {
                 return (
                   <div className="w-full flex flex-row items-start mt-4 gap-4">
                     {/* 主要教學文字（左側） */}
                     <div className="flex-1 min-w-0">
                       <ul className="list-disc pl-5 text-left">
-                        <li>{stepsArr[textIndex] || tInstall.noInstruction}</li>
+                        <li>{finalSteps[textIndex] || tInstall.noInstruction}</li>
                       </ul>
                     </div>
                     {/* QR code（右側） */}
@@ -738,16 +800,16 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
             })()}
             {/* Android QR code 安裝步驟6時，於文字區塊右側顯示 QR code 及下載、分享按鈕 */}
             {tab === 'android' && androidType === 'qrcode' && step === 5 && instructions && (() => {
-              const inst = instructions.android?.find(i => i.installation_via_qr_code);
-              const qrUrl = inst?.installation_via_qr_code?.qr_code_url;
-              const qrData = inst?.installation_via_qr_code?.qr_code_data;
+              const inst = instructions.android?.find(i => i.install_type === 'qrcode');
+              const qrUrl = inst?.content?.qr_code_url;
+              const qrData = inst?.content?.qr_code_data;
               if (qrUrl || qrData) {
                 return (
                   <div className="w-full flex flex-row items-start mt-4 gap-4">
                     {/* 主要教學文字（左側） */}
                     <div className="flex-1 min-w-0">
                       <ul className="list-disc pl-5 text-left">
-                        <li>{stepsArr[textIndex] || tInstall.noInstruction}</li>
+                        <li>{finalSteps[textIndex] || tInstall.noInstruction}</li>
                       </ul>
                     </div>
                     {/* QR code（右側） */}
@@ -784,9 +846,9 @@ export function InstallInstructions({ onBack, iccid, name, flagUrl }: InstallIns
             })()}
             {/* Android 手動安裝步驟7時，於文字區塊下方顯示 SM-DP+地址與啟用碼 */}
             {tab === 'android' && androidType === 'manual' && step === 6 && instructions && (() => {
-              const inst = instructions.android?.find(i => i.installation_manual);
-              let smdp = inst?.installation_manual?.smdp_address_and_activation_code || '';
-              let code = inst?.installation_manual?.activation_code || '';
+              const inst = instructions.android?.find(i => i.install_type === 'manual');
+              let smdp = inst?.content?.smdp_address_and_activation_code || '';
+              let code = inst?.content?.activation_code || '';
               // 新增：解析 LPA 格式
               if (smdp.startsWith('LPA:1$')) {
                 const parts = smdp.split('$');

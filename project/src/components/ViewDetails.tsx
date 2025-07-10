@@ -108,34 +108,29 @@ export function ViewDetails({
     setTopUpLoading(true);
     setTopUpError('');
     // 先查 localStorage
+    const cacheKey = getTopupCacheKey(pkg.iccid);
     const cached = getTopupCache(pkg.iccid);
+    console.log('[DEBUG] localStorage:', localStorage.getItem(cacheKey));
+    console.log('[DEBUG] getTopupCache:', cached);
     if (cached) {
       setTopUpPackages(cached);
       setTopUpLoading(false);
+      console.log('[DEBUG] setTopUpPackages from cache:', cached);
       return;
     }
-    // 沒有快取才發 API + 查 DB
+    // 沒有快取才發 API，API 回傳後直接 setTopUpPackages
     fetch(`https://lcfsxxncgqrhjtbfmtig.supabase.co/functions/v1/airalo-get-topups?iccid=${pkg.iccid}`)
       .then(res => res.json())
       .then(json => {
-        // function 執行完畢後再查詢 DB
-        return supabase
-          .from('esim_topups')
-          .select('id, package_id, data, day, sell_price')
-          .eq('iccid', pkg.iccid);
-      })
-      .then(({ data, error }) => {
-        if (error) {
-          setTopUpError(t.viewDetails.topUpErrorFailed);
-          setTopUpPackages([]);
-        } else {
-          setTopUpPackages(data || []);
-          setTopupCache(pkg.iccid, data || []);
-        }
+        console.log('[DEBUG] API 回傳:', json);
+        setTopUpPackages(json.data || []);
+        setTopupCache(pkg.iccid, json.data || []);
+        console.log('[DEBUG] setTopUpPackages from API:', json.data);
       })
       .catch(() => {
         setTopUpError(t.viewDetails.topUpErrorFailed);
         setTopUpPackages([]);
+        console.log('[DEBUG] setTopUpPackages catch error, set to []');
       })
       .finally(() => setTopUpLoading(false));
   }, [pkg.iccid, t]);
@@ -431,6 +426,8 @@ export function ViewDetails({
     };
     return getGB(a.data) - getGB(b.data);
   });
+  console.log('[DEBUG] topUpPackages:', topUpPackages);
+  console.log('[DEBUG] sortedTopUpPackages:', sortedTopUpPackages);
 
   const renderTopUpPackages = () => {
     // 判斷當前 eSIM 是否已封存
