@@ -10,6 +10,8 @@ export interface Store {
   savedCards: SavedCard[];
   updateUserCards: (cards: SavedCard[]) => void;
   fetchUserCards?: () => Promise<void>;
+  idToken: string | null;
+  setIdToken: (token: string | null) => void;
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -26,6 +28,8 @@ export const useStore = create<Store>((set, get) => ({
     console.log('updateUserCards 更新:', cards);
     set({ savedCards: cards });
   },
+  idToken: null,
+  setIdToken: (token) => set({ idToken: token }),
   fetchUserCards: async () => {
     const user = get().user;
     if (!user) return;

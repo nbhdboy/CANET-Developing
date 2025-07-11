@@ -221,3 +221,8 @@ verify_jwt = false
 enabled = true
 entrypoint = "./functions/invoice-notify/index.ts"
 verify_jwt = false
+
+[functions.line-get-user-profile]
+enabled = true
+entrypoint = "./functions/line-get-user-profile/index.ts"
+verify_jwt = false

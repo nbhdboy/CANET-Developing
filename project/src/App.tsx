@@ -20,6 +20,7 @@ import { Profile } from './components/Profile';
 import { fetchAiraloPackages, parseAiraloPackages, CountryPackageSummary, groupByCountry } from './data/packages';
 import { Routes, Route } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import liff from '@line/liff';
 
 // === 國家與區域白名單 ===
 const ALLOWED_COUNTRY_CODES = [
@@ -88,7 +89,7 @@ const countryNames: Record<string, { zh: string; en: string }> = {
 };
 
 function App() {
-  const { language, setUser, user, fetchUserCards } = useStore();
+  const { language, setUser, setIdToken, user, fetchUserCards } = useStore();
   const [activeTab, setActiveTab] = useState<'store' | 'esims' | 'profile'>('store');
   const [selectedPackage, setSelectedPackage] = useState<ESIMPackage | null>(null);
   const [showPackageList, setShowPackageList] = useState(false);
@@ -204,26 +205,56 @@ function App() {
     };
   }, []);
 
-  // Mock login/logout functions
-  const handleLogin = () => {
-    const mockUser: UserProfile = {
-      userId: 'test_user_001',
-      displayName: 'Demo User',
-      pictureUrl: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop',
-      language: language as 'en' | 'zh_TW',
-      savedCards: []  // 添加默認的空卡片列表
-    };
-    setUser(mockUser);
-  };
+  useEffect(() => {
+    const liffId = import.meta.env.VITE_LIFF_ID;
+    if (!liffId) {
+      console.error('找不到 LIFF ID，請確認環境變數 VITE_LIFF_ID 已正確設定');
+      return;
+    }
+    liff.init({ liffId })
+      .then(() => {
+        if (!liff.isLoggedIn()) {
+          liff.login();
+        } else {
+          const idToken = liff.getIDToken();
+          setIdToken(idToken || null);
+          // 新增：呼叫後端 function 取得用戶資料
+          if (idToken) {
+            fetch(`${import.meta.env.VITE_API_URL}/line-get-user-profile`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id_token: idToken })
+            })
+              .then(res => res.json())
+              .then(data => {
+                if (data && data.name && data.picture) {
+                  setUser({
+                    userId: '', // 這裡暫時設空，後端如需回傳 sub 可一併設
+                    displayName: data.name,
+                    pictureUrl: data.picture,
+                    language: language as 'en' | 'zh_TW',
+                    savedCards: []
+                  });
+                }
+              });
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('LIFF 初始化失敗', err);
+      });
+  }, [setUser, setIdToken, language]);
 
   const handleLogout = () => {
+    liff.logout();
     setUser(null);
+    setIdToken(null);
   };
   
   const handlePackageSelect = (pkg: ESIMPackage) => {
     console.log('[LOG] handlePackageSelect', pkg);
     if (!user) {
-      handleLogin();
+      liff.login();
       return;
     }
     setSelectedPackage(pkg);
@@ -956,15 +987,7 @@ function App() {
                 loading={profileLoading}
               />
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">{t.loginToViewProfile}</p>
-                <button
-                  onClick={handleLogin}
-                  className="bg-line-gradient hover:bg-line-gradient-hover text-white px-6 py-2 rounded-full transition-colors font-medium"
-                >
-                  {t.login}
-                </button>
-              </div>
+              null
             )}
           </div>
         );
@@ -1032,14 +1055,7 @@ function App() {
             </div>
 
             {!user && (
-              <div className="mb-8 bg-white p-6 rounded-lg shadow-md">
-                <button
-                  onClick={handleLogin}
-                  className="w-full bg-line-gradient hover:bg-line-gradient-hover text-white py-3 rounded-full transition-colors font-medium"
-                >
-                  {t.login}
-                </button>
-              </div>
+              null
             )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
