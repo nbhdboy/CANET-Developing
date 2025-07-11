@@ -74,8 +74,8 @@ serve(async (req) => {
     console.log("[line-get-user-profile] 新增 user_cards 成功");
   }
 
-  console.log("[line-get-user-profile] 回傳資料:", { name, picture, sub: line_user_id });
-  return new Response(JSON.stringify({ name, picture, sub: line_user_id }), {
+  console.log("[line-get-user-profile] 回傳資料:", { name, picture });
+  return new Response(JSON.stringify({ name, picture }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }); 

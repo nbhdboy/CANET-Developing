@@ -207,29 +207,39 @@ function App() {
 
   useEffect(() => {
     const liffId = import.meta.env.VITE_LIFF_ID;
+    console.log('[LOG] 目前 VITE_LIFF_ID:', liffId); // 1. log 環境變數
     if (!liffId) {
       console.error('找不到 LIFF ID，請確認環境變數 VITE_LIFF_ID 已正確設定');
       return;
     }
     liff.init({ liffId })
       .then(() => {
+        console.log('[LOG] LIFF 初始化成功');
         if (!liff.isLoggedIn()) {
+          console.log('[LOG] 尚未登入，執行 liff.login()');
           liff.login();
         } else {
           const idToken = liff.getIDToken();
+          console.log('[LOG] 取得 idToken:', idToken); // 2. log idToken
           setIdToken(idToken || null);
           // 新增：呼叫後端 function 取得用戶資料
           if (idToken) {
+            console.log('[LOG] 準備呼叫 line-get-user-profile，idToken:', idToken);
             fetch(`${import.meta.env.VITE_API_URL}/line-get-user-profile`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id_token: idToken })
             })
-              .then(res => res.json())
+              .then(res => {
+                console.log('[LOG] 收到 response:', res);
+                return res.json();
+              })
               .then(data => {
+                console.log('[LOG] 後端回傳 user profile:', data);
                 if (data && data.name && data.picture) {
+                  console.log('[LOG] 準備 setUser，name:', data.name, 'picture:', data.picture);
                   setUser({
-                    userId: '', // 這裡暫時設空，後端如需回傳 sub 可一併設
+                    userId: '', // 後端不回傳 userId，這裡設空
                     displayName: data.name,
                     pictureUrl: data.picture,
                     language: language as 'en' | 'zh_TW',
@@ -237,6 +247,8 @@ function App() {
                   });
                 }
               });
+          } else {
+            console.warn('[LOG] idToken 為空，無法呼叫後端');
           }
         }
       })
